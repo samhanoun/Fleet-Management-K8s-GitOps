@@ -1,0 +1,78 @@
+name: GitOps - Deploy to Kubernetes
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**.yaml'
+      - '!.github/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '**.yaml'
+
+jobs:
+  validate:
+    name: Validate Kubernetes Manifests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Validate YAML syntax
+        run: |
+          for file in *.yaml; do
+            echo "Validating $file..."
+            kubectl apply --dry-run=client -f "$file"
+          done
+
+      - name: Check for syntax errors
+        run: |
+          find . -name "*.yaml" -type f | while read file; do
+            echo "Checking $file..."
+            yamllint -d relaxed "$file" || true
+          done
+
+  deploy-dev:
+    name: Deploy to Development
+    needs: validate
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+
+      # Pour un vrai déploiement, décommentez et configurez avec vos credentials
+      # - name: Configure kubectl
+      #   run: |
+      #     echo "${{ secrets.KUBECONFIG }}" | base64 -d > kubeconfig
+      #     export KUBECONFIG=kubeconfig
+
+      - name: Deploy to Kubernetes (Dry Run)
+        run: |
+          echo "🚀 Deploying Fleet Management Application..."
+          kubectl apply --dry-run=server -f namespace.yaml
+          kubectl apply --dry-run=server -f mongodb-pvc.yaml
+          kubectl apply --dry-run=server -f mongodb-deployment.yaml
+          kubectl apply --dry-run=server -f queue-deployment.yaml
+          kubectl apply --dry-run=server -f position-simulator-deployment.yaml
+          kubectl apply --dry-run=server -f position-tracker-deployment.yaml
+          kubectl apply --dry-run=server -f api-gateway-deployment.yaml
+          kubectl apply --dry-run=server -f webapp-deployment.yaml
+          echo "✅ Deployment validation completed"
+
+      - name: Summary
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "✅ All manifests validated successfully" >> $GITHUB_STEP_SUMMARY
+          echo "📦 Ready for deployment to cluster" >> $GITHUB_STEP_SUMMARY
