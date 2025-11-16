@@ -1,0 +1,64 @@
+---
+# Position Tracker Deployment
+# Spring Boot application that consumes vehicle positions from the queue
+# Processes and stores position data
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fleetman-position-tracker
+  namespace: default
+  labels:
+    app: fleetman-position-tracker
+    component: backend
+spec:
+  replicas: 2  # High availability with 2 replicas
+  selector:
+    matchLabels:
+      app: fleetman-position-tracker
+  template:
+    metadata:
+      labels:
+        app: fleetman-position-tracker
+        component: backend
+    spec:
+      containers:
+      - name: position-tracker
+        image: supinfo4kube/position-tracker:1.0.1
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        env:
+        # Spring Boot profile configuration for production microservice mode
+        - name: SPRING_PROFILES_ACTIVE
+          value: "production-microservice"
+        # Resource limits and requests for production workload
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "250m"
+
+---
+# Position Tracker Service (NodePort - External access)
+# Exposes the position tracker service externally on port 30010
+apiVersion: v1
+kind: Service
+metadata:
+  name: fleetman-position-tracker
+  namespace: default
+  labels:
+    app: fleetman-position-tracker
+    component: backend
+spec:
+  type: NodePort  # External access
+  selector:
+    app: fleetman-position-tracker
+  ports:
+  - port: 8080
+    targetPort: 8080
+    nodePort: 30010  # External port for access
+    protocol: TCP
+    name: http

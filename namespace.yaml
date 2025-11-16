@@ -1,0 +1,10 @@
+---
+# Namespace for Fleet Management Application
+# Provides resource isolation and organization for all fleetman components
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: default
+  labels:
+    name: default
+    environment: production

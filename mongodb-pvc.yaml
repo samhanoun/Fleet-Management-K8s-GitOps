@@ -1,0 +1,18 @@
+---
+# PersistentVolumeClaim for MongoDB data persistence
+# Ensures MongoDB data survives pod restarts and rescheduling
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongodb-pvc
+  namespace: default
+  labels:
+    app: fleetman-mongodb
+    component: database
+spec:
+  accessModes:
+    - ReadWriteOnce  # Single node read-write access
+  resources:
+    requests:
+      storage: 10Gi  # Request 10GB for MongoDB data
+  # storageClassName: standard  # Uncomment and set if using specific storage class

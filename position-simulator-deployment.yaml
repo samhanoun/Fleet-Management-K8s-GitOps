@@ -1,0 +1,59 @@
+---
+# Position Simulator Deployment
+# Spring Boot application that generates simulated vehicle positions
+# Publishes position data to the ActiveMQ queue
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fleetman-position-simulator
+  namespace: default
+  labels:
+    app: fleetman-position-simulator
+    component: simulator
+spec:
+  replicas: 2  # High availability with 2 replicas
+  selector:
+    matchLabels:
+      app: fleetman-position-simulator
+  template:
+    metadata:
+      labels:
+        app: fleetman-position-simulator
+        component: simulator
+    spec:
+      containers:
+      - name: position-simulator
+        image: supinfo4kube/position-simulator:1.0.1
+        env:
+        # Spring Boot profile configuration for production microservice mode
+        - name: SPRING_PROFILES_ACTIVE
+          value: "production-microservice"
+        # Resource limits and requests for production workload
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "250m"
+
+---
+# Position Simulator Service (ClusterIP - Internal only)
+# Internal service for health checks and monitoring
+apiVersion: v1
+kind: Service
+metadata:
+  name: fleetman-position-simulator
+  namespace: default
+  labels:
+    app: fleetman-position-simulator
+    component: simulator
+spec:
+  type: ClusterIP  # Internal service only
+  selector:
+    app: fleetman-position-simulator
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http

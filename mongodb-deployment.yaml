@@ -1,0 +1,82 @@
+---
+# MongoDB Deployment
+# Database for storing fleet management data
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fleetman-mongodb
+  namespace: default
+  labels:
+    app: fleetman-mongodb
+    component: database
+spec:
+  replicas: 1  # MongoDB runs as single instance (stateful workload)
+  selector:
+    matchLabels:
+      app: fleetman-mongodb
+  template:
+    metadata:
+      labels:
+        app: fleetman-mongodb
+        component: database
+    spec:
+      containers:
+      - name: mongodb
+        image: mongo:3.6.23
+        ports:
+        - containerPort: 27017
+          name: mongodb
+          protocol: TCP
+        # Resource limits and requests for production workload
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        # Volume mount for persistent data storage
+        volumeMounts:
+        - name: mongodb-storage
+          mountPath: /data/db
+        # Liveness probe to check if MongoDB is running
+        livenessProbe:
+          tcpSocket:
+            port: 27017
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        # Readiness probe to check if MongoDB is ready to accept connections
+        readinessProbe:
+          tcpSocket:
+            port: 27017
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      volumes:
+      - name: mongodb-storage
+        persistentVolumeClaim:
+          claimName: mongodb-pvc
+
+---
+# MongoDB Service (ClusterIP - Internal only)
+# Provides stable DNS name for internal database access
+apiVersion: v1
+kind: Service
+metadata:
+  name: fleetman-mongodb
+  namespace: default
+  labels:
+    app: fleetman-mongodb
+    component: database
+spec:
+  type: ClusterIP  # Internal service only
+  selector:
+    app: fleetman-mongodb
+  ports:
+  - port: 27017
+    targetPort: 27017
+    protocol: TCP
+    name: mongodb

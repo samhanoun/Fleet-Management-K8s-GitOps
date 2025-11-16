@@ -1,0 +1,65 @@
+---
+# ActiveMQ Queue Deployment
+# Message queue for asynchronous communication between microservices
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fleetman-queue
+  namespace: default
+  labels:
+    app: fleetman-queue
+    component: messaging
+spec:
+  replicas: 1  # ActiveMQ runs as single instance for message queue consistency
+  selector:
+    matchLabels:
+      app: fleetman-queue
+  template:
+    metadata:
+      labels:
+        app: fleetman-queue
+        component: messaging
+    spec:
+      containers:
+      - name: queue
+        image: supinfo4kube/queue:1.0.1
+        ports:
+        - containerPort: 8161
+          name: admin-ui
+          protocol: TCP
+        - containerPort: 61616
+          name: message-port
+          protocol: TCP
+        # Resource limits and requests for production workload
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "250m"
+
+---
+# ActiveMQ Queue Service (ClusterIP - Internal only)
+# Provides stable DNS name for internal message queue access
+apiVersion: v1
+kind: Service
+metadata:
+  name: fleetman-queue
+  namespace: default
+  labels:
+    app: fleetman-queue
+    component: messaging
+spec:
+  type: ClusterIP  # Internal service only
+  selector:
+    app: fleetman-queue
+  ports:
+  - port: 8161
+    targetPort: 8161
+    protocol: TCP
+    name: admin-ui
+  - port: 61616
+    targetPort: 61616
+    protocol: TCP
+    name: message-port
